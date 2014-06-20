@@ -10,20 +10,16 @@
 / * Redistributions of source code must retain the above copyright notice.
 /
 /-------------------------------------------------------------------------/
-  Features and Limitations:
+  
+  This code is modified to be compatible to the TI Stellaris Launchpad.
+  Should work with the newer Tiva-c launchpad as well
 
-  * Easy to Port Bit-banging SPI
-    It uses only four GPIO pins. No interrupt, no SPI is needed.
-
-  * Platform Independent
-    You need to modify only a few macros to control GPIO ports.
-
-  * Low Speed
-    The data transfer rate will be several times slower than hardware SPI.
-
-  * No Media Change Detection
-    Application program needs to perform f_mount() after media change.
-
+  Setup SSI2 Port
+  CS:  E5
+  RX:  B6
+  TX:  B7
+  CLK: B4
+  
 /-------------------------------------------------------------------------*/
 
 #define PART_TM4C1233H6PM
@@ -36,16 +32,14 @@
 #include "inc/hw_ints.h"
 #include "inc/hw_memmap.h"
 #include "driverlib/gpio.h"
-#include "driverlib/interrupt.h"
-#include "driverlib/rom.h"
 #include "driverlib/sysctl.h"
-#include "driverlib/uart.h"
 #include "driverlib/ssi.h"
 
 
 /*-------------------------------------------------------------------------*/
 /* Platform dependent macros and functions needed to be modified           */
 /*-------------------------------------------------------------------------*/
+
 #define SPI_BIT_RATE_MAX 20000000
 #define SPI_BIT_RATE_INIT 100000
 
@@ -97,7 +91,7 @@ BYTE CardType;			/* b0:MMC, b1:SDv1, b2:SDv2, b3:Block addressing */
 
 
 /*-----------------------------------------------------------------------*/
-/* Transmit bytes to the card (bitbanging)                               */
+/* Transmit bytes to the card                                            */
 /*-----------------------------------------------------------------------*/
 
 static
@@ -118,7 +112,7 @@ void xmit_mmc (
 
 
 /*-----------------------------------------------------------------------*/
-/* Receive bytes from the card (bitbanging)                              */
+/* Receive bytes from the card                                           */
 /*-----------------------------------------------------------------------*/
 
 static
@@ -359,6 +353,7 @@ DSTATUS disk_initialize (
 	GPIOPinWrite(GPIO_PORTE_BASE, GPIO_PIN_5, GPIO_PIN_5);
 
 	SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+	
 	//setup the pin mux
 	GPIOPinConfigure(GPIO_PB4_SSI2CLK);
 	GPIOPinConfigure(GPIO_PB7_SSI2TX);
@@ -375,11 +370,7 @@ DSTATUS disk_initialize (
 	SSIConfigSetExpClk(SSI2_BASE,SysCtlClockGet(),SSI_FRF_MOTO_MODE_0,SSI_MODE_MASTER,SPI_BIT_RATE_INIT,8);
 	SSIEnable(SSI2_BASE);
 
-
 	dly_us(10000);			/* 10ms */
-	dly_us(10000);			/* 10ms */
-	dly_us(10000);			/* 10ms */
-
 
 	for (n = 10; n; n--) rcvr_mmc(buf, 1);	/* Apply 80 dummy clocks and the card gets ready to receive command */
 
@@ -416,11 +407,12 @@ DSTATUS disk_initialize (
 	Stat = s;
 
 	deselect();
-	/*
+	
+	//after initialisation go to full-speed
 	SSIDisable(SSI2_BASE);
 	SSIConfigSetExpClk(SSI2_BASE,SysCtlClockGet(),SSI_FRF_MOTO_MODE_0,SSI_MODE_MASTER,SPI_BIT_RATE_MAX,8);
 	SSIEnable(SSI2_BASE);
-	*/
+	
 	return s;
 }
 
